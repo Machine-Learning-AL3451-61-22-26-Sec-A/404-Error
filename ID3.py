@@ -1,97 +1,90 @@
+import streamlit as st
 import numpy as np
-import math
+import pandas as pd
 
 class Node:
-    def __init__(self, attribute):
-        self.attribute = attribute
-        self.children = []
-        self.answer = ""
+    def __init__(self, feature=None, value=None, result=None):
+        self.feature = feature
+        self.value = value
+        self.result = result
+        self.children = {}
 
-    def __str__(self):
-        return self.attribute
+class DecisionTreeID3:
+    def __init__(self):
+        self.root = None
 
-def subtables(data, col, delete):
-    dict = {}
-    items = np.unique(data[:, col])
-    count = np.zeros((items.shape[0], 1), dtype=np.int32)
-    for x in range(items.shape[0]):
-        for y in range(data.shape[0]):
-            if data[y, col] == items[x]:
-                count[x] += 1
-    for x in range(items.shape[0]):
-        dict[items[x]] = np.empty((int(count[x]), data.shape[1]), dtype="|S32")
+    def entropy(self, data):
+        _, counts = np.unique(data, return_counts=True)
+        probabilities = counts / len(data)
+        return -np.sum(probabilities * np.log2(probabilities))
 
-    pos = 0
-    for y in range(data.shape[0]):
-        if data[y, col] == items[x]:
-            dict[items[x]][pos] = data[y]
-            pos += 1
-    if delete:
-        dict[items[x]] = np.delete(dict[items[x]], col, 1)
-    return items, dict
+    def information_gain(self, data, feature_name, target_name):
+        total_entropy = self.entropy(data[target_name])
+        unique_values = data[feature_name].unique()
+        weighted_entropy = 0
+        for value in unique_values:
+            subset = data[data[feature_name] == value]
+            weighted_entropy += len(subset) / len(data) * self.entropy(subset[target_name])
+        return total_entropy - weighted_entropy
 
-def entropy(S):
-    items = np.unique(S)
-    if items.size == 1:
-        return 0
-    counts = np.zeros((items.shape[0], 1))
-    sums = 0
-    for x in range(items.shape[0]):
-        counts[x] = sum(S == items[x]) / (S.size * 1.0)
-    for count in counts:
-        sums += -1 * count * math.log(count, 2)
-    return sums
+    def build_tree(self, data, features, target_name):
+        if len(data) == 0:
+            return None
+        if len(data[target_name].unique()) == 1:
+            return Node(result=data[target_name].iloc[0])
 
-def gain_ratio(data, col):
-    items, dict = subtables(data, col, delete=False)
-    total_size = data.shape[0]
-    entropies = np.zeros((items.shape[0], 1))
-    intrinsic = np.zeros((items.shape[0], 1))
-    for x in range(items.shape[0]):
-        ratio = dict[items[x]].shape[0]/(total_size * 1.0)
-        entropies[x] = ratio * entropy(dict[items[x]][:, -1])
-        intrinsic[x] = ratio * math.log(ratio, 2)
-    total_entropy = entropy(data[:, -1])
-    iv = -1 * sum(intrinsic)
-    for x in range(entropies.shape[0]):
-        total_entropy -= entropies[x]
-    return total_entropy / iv
+        information_gains = [(feature, self.information_gain(data, feature, target_name)) for feature in features]
+        best_feature, _ = max(information_gains, key=lambda x: x[1])
 
-def create_node(data, metadata):
-    if (np.unique(data[:, -1])).shape[0] == 1:
-        node = Node("")
-        node.answer = np.unique(data[:, -1])[0]
-        return node
-    gains = np.zeros((data.shape[1] - 1, 1))
-    for col in range(data.shape[1] - 1):
-        gains[col] = gain_ratio(data, col)
-    split = np.argmax(gains)
+        root = Node(feature=best_feature)
 
-    node = Node(metadata[split])
+        for value in data[best_feature].unique():
+            subset = data[data[best_feature] == value]
+            root.children[value] = self.build_tree(subset, [f for f in features if f != best_feature], target_name)
 
-    metadata = np.delete(metadata, split, 0)
-    items, dict = subtables(data, split, delete=True)
-    for x in range(items.shape[0]):
-        child = create_node(dict[items[x]], metadata)
-        node.children.append((items[x], child))
-    return node
+        return root
 
-def empty(size):
-    s = ""
-    for x in range(size):
-        s += " "
-    return s
+    def fit(self, data, target_name):
+        features = [col for col in data.columns if col != target_name]
+        self.root = self.build_tree(data, features, target_name)
 
-def print_tree(node, level):
-    if node.answer != "":
-        print(empty(level), node.answer)
-        return
-    print(empty(level), node.attribute)
-    for value, n in node.children:
-        print(empty(level + 1), value)
-        print_tree(n, level + 2)
+    def predict_instance(self, instance, node):
+        if node.result is not None:
+            return node.result
+        value = instance[node.feature]
+        if value not in node.children:
+            return None
+        return self.predict_instance(instance, node.children[value])
 
-metadata, traindata = read_data("/content/drive/MyDrive/ML/data sets/tennis.csv")
-data = np.array(traindata)
-node = create_node(data, metadata)
-print_tree(node, 0)
+    def predict(self, data):
+        predictions = []
+        for index, row in data.iterrows():
+            result = self.predict_instance(row, self.root)
+            predictions.append(result)
+        return predictions
+
+def main():
+    st.title("Decision Tree ID3 with Streamlit")
+
+    # Upload dataset file
+    uploaded_file = st.file_uploader("Upload Dataset", type=["csv"])
+    if uploaded_file is not None:
+        # Read the dataset
+        data = pd.read_csv(uploaded_file)
+
+        # Create DataFrame
+        df = pd.DataFrame(data)
+
+        # Initialize the DecisionTreeID3 model
+        model = DecisionTreeID3()
+
+        # Train the model
+        model.fit(df, 'PlayTennis')
+
+        # Make predictions
+        predictions = model.predict(df)
+
+        st.write("Predictions:", predictions)
+
+if __name__ == "__main__":
+    main()
