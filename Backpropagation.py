@@ -1,10 +1,5 @@
+import streamlit as st
 import numpy as np
-
-X = np.array(([2, 9], [1, 5], [3, 6]), dtype=float)
-y = np.array(([92], [86], [89]), dtype=float)
-
-X = X/np.amax(X,axis=0) # maximum of X array longitudinally
-y = y/100
 
 # Sigmoid Function
 def sigmoid(x):
@@ -14,42 +9,54 @@ def sigmoid(x):
 def derivatives_sigmoid(x):
     return x * (1 - x)
 
-# Variable initialization
-epoch = 7000 # Setting training iterations
-lr = 0.1 # Setting learning rate
-inputlayer_neurons = 2 # Number of features in the data set
-hiddenlayer_neurons = 3 # Number of hidden layers neurons
-output_neurons = 1 # Number of neurons at output layer
+def train_neural_network(X, y, epoch, lr, inputlayer_neurons, hiddenlayer_neurons, output_neurons):
+    # Weight and bias initialization
+    wh = np.random.uniform(size=(inputlayer_neurons, hiddenlayer_neurons))
+    bh = np.random.uniform(size=(1, hiddenlayer_neurons))
+    wout = np.random.uniform(size=(hiddenlayer_neurons, output_neurons))
+    bout = np.random.uniform(size=(1, output_neurons))
 
-# Weight and bias initialization
-wh = np.random.uniform(size=(inputlayer_neurons, hiddenlayer_neurons))
-bh = np.random.uniform(size=(1, hiddenlayer_neurons))
-wout = np.random.uniform(size=(hiddenlayer_neurons, output_neurons))
-bout = np.random.uniform(size=(1, output_neurons))
+    # Draws a random range of numbers uniformly of dim x*y
+    for i in range(epoch):
+        hinp1 = np.dot(X, wh)
+        hinp = hinp1 + bh
+        hlayer_act = sigmoid(hinp)
+        outinp1 = np.dot(hlayer_act, wout)
+        outinp = outinp1 + bout
+        output = sigmoid(outinp)
 
-# Draws a random range of numbers uniformly of dim x*y
-for i in range(epoch):
-    hinp1 = np.dot(X, wh)
-    hinp = hinp1 + bh
-    hlayer_act = sigmoid(hinp)
-    outinp1 = np.dot(hlayer_act, wout)
-    outinp = outinp1 + bout
-    output = sigmoid(outinp)
+        # Backpropagation
+        EO = y - output
+        outgrad = derivatives_sigmoid(output)
+        d_output = EO * outgrad
+        EH = d_output.dot(wout.T)
+        hiddengrad = derivatives_sigmoid(hlayer_act)  # How much hidden layer weights
+        d_hiddenlayer = EH * hiddengrad
 
-    # Backpropagation
-    EO = y - output
-    outgrad = derivatives_sigmoid(output)
-    d_output = EO * outgrad
-    EH = d_output.dot(wout.T)
-    hiddengrad = derivatives_sigmoid(hlayer_act) # How much hidden layer weights
-    d_hiddenlayer = EH * hiddengrad
+        wout += hlayer_act.T.dot(d_output) * lr  # Dot product of next layer error and
+        wh += X.T.dot(d_hiddenlayer) * lr
 
-    wout += hlayer_act.T.dot(d_output) * lr # Dot product of next layer error and
+    return output
 
-    # bout += np.sum(d_output, axis=0,keepdims=True) *lr
-    wh += X.T.dot(d_hiddenlayer) * lr
-    # bh += np.sum(d_hiddenlayer, axis=0,keepdims=True) *lr
+def main():
+    st.title("Backpropagation with Streamlit")
 
-print("Input: \n" + str(X))
-print("Actual Output: \n" + str(y))
-print("Predicted Output: \n", output)
+    st.sidebar.title("Parameters")
+    epoch = st.sidebar.slider("Epoch", min_value=1000, max_value=10000, step=1000, value=7000)
+    lr = st.sidebar.slider("Learning Rate", min_value=0.01, max_value=1.0, step=0.01, value=0.1)
+    inputlayer_neurons = st.sidebar.number_input("Input Layer Neurons", min_value=1, max_value=10, value=2)
+    hiddenlayer_neurons = st.sidebar.number_input("Hidden Layer Neurons", min_value=1, max_value=10, value=3)
+    output_neurons = st.sidebar.number_input("Output Neurons", min_value=1, max_value=10, value=1)
+
+    X = np.array(([2, 9], [1, 5], [3, 6]), dtype=float)
+    y = np.array(([92], [86], [89]), dtype=float)
+
+    X_normalized = X / np.amax(X, axis=0)  # maximum of X array longitudinally
+    y_normalized = y / 100
+
+    if st.button("Train Neural Network"):
+        predicted_output = train_neural_network(X_normalized, y_normalized, epoch, lr, inputlayer_neurons, hiddenlayer_neurons, output_neurons)
+        st.write("Predicted Output: \n", predicted_output)
+
+if __name__ == "__main__":
+    main()
