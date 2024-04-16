@@ -72,17 +72,19 @@ def main():
         # Read the dataset
         data = pd.read_csv(uploaded_file)
 
-        # Create DataFrame
-        df = pd.DataFrame(data)
+        # Check if 'PlayTennis' column exists in the dataset
+        if 'PlayTennis' not in data.columns:
+            st.error("Target column 'PlayTennis' not found in the uploaded dataset.")
+            return
 
         # Initialize the DecisionTreeID3 model
         model = DecisionTreeID3()
 
         # Train the model
-        model.fit(df, 'PlayTennis')
+        model.fit(data, 'PlayTennis')
 
         # Make predictions
-        predictions = model.predict(df)
+        predictions = model.predict(data)
 
         st.write("Predictions:", predictions)
 
