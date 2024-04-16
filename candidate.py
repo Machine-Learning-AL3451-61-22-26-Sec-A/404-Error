@@ -1,68 +1,47 @@
 import streamlit as st
-import numpy as np
-import pandas as pd
-from pandas import DataFrame
-data=pd.read_csv('enjoysport.csv')
-concepts=data.values[:,:-1]
-target=data.values[:,-1]
-def learn(concepts, target):
-    specific_h = concepts[0].copy()
-    general_h = [['?' for i in range(len(specific_h))] for i in range(len(specific_h))]
-    for i, h in enumerate(concepts):
-        if target[i] == "yes":
-            #print(target[i])
-            for x in range(len(specific_h)):
-                if h[x] != specific_h[x]:
-                    specific_h[x] = '?'
-                    general_h[x][x] = '?'
-        if target[i] == "no":
-            for x in range(len(specific_h)):
-                if h[x] != specific_h[x]:
-                    general_h[x][x] = specific_h[x]
+
+def candidate_elimination(examples):
+    specific_h = examples[0][:-1]
+    general_h = [["?" for _ in range(len(specific_h))] for _ in range(len(specific_h))]
+    
+    for example in examples:
+        if example[-1] == "Y":
+            for i in range(len(specific_h)):
+                if example[i] != specific_h[i]:
+                    specific_h[i] = "?"
+                    general_h[i][i] = "?"
+        elif example[-1] == "N":
+            for i in range(len(specific_h)):
+                if example[i] != specific_h[i]:
+                    general_h[i][i] = specific_h[i]
                 else:
-                    general_h[x][x] = '?'
-    indices = [i for i,val in enumerate(general_h) if val==['?' for i in range(len(specific_h))]]
-    for i in indices:
-        general_h.remove(['?' for i in range(len(specific_h))])
-    return specific_h, general_h
-s_final, g_final = learn(concepts, target)
-print("Final S:", s_final, sep="\n")
-print("Final G:", g_final, sep="\n")
-import pandas as pd
-def learn(concepts, target):
-    specific_h = concepts[0].copy()
-    general_h = [['?' for _ in range(len(specific_h))] for _ in range(len(specific_h))]
-
-    for i, h in enumerate(concepts):
-        if target[i] == "yes":
-            for x in range(len(specific_h)):
-                if h[x] != specific_h[x]:
-                    specific_h[x] = '?'
-                    general_h[x][x] = '?'
-        elif target[i] == "no":
-            for x in range(len(specific_h)):
-                if h[x] != specific_h[x]:
-                    general_h[x][x] = specific_h[x]
-                else:
-                    general_h[x][x] = '?'
-
-    indices = [i for i, val in enumerate(general_h) if val == ['?' for _ in range(len(specific_h))]]
-    for i in indices[::-1]:
-        general_h.pop(i)
-
-    return specific_h, general_h
+                    general_h[i][i] = "?"
+                    
+    return specific_h, [h for h in general_h if h != ["?" for _ in range(len(specific_h))]]
 
 def main():
-    file_name = input("enjoysport.csv")
-    try:
-        data = pd.read_csv(file_name)
-        concepts = data.values[:, :-1]
-        target = data.values[:, -1]
-        s_final, g_final = learn(concepts, target)
-        print("Final S:", s_final, sep="\n")
-        print("Final G:", g_final, sep="\n")
-    except FileNotFoundError:
-        print("File not found. Please make sure the file exists in the current directory.")
+    st.title("Candidate Elimination Algorithm")
+    st.write("This algorithm finds the maximally specific hypothesis and the maximally general hypotheses.")
+    
+    num_attributes = st.number_input("Number of attributes:", min_value=1, step=1, value=3)
+    
+    examples = []
+    st.write("Enter training examples:")
+    for _ in range(st.number_input("Number of examples:", min_value=1, step=1, value=3)):
+        example = []
+        for i in range(num_attributes + 1):
+            if i < num_attributes:
+                example.append(st.text_input(f"Attribute {i + 1}:"))
+            else:
+                example.append(st.selectbox("Label:", options=["Y", "N"]))
+        examples.append(example)
+    
+    if st.button("Run Algorithm"):
+        specific, general = candidate_elimination(examples)
+        st.write("Maximally Specific Hypothesis:", specific)
+        st.write("Maximally General Hypotheses:")
+        for h in general:
+            st.write(h)
 
 if __name__ == "__main__":
     main()
