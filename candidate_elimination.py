@@ -1,3 +1,5 @@
+import streamlit as st
+import numpy as np
 import pandas as pd
 from pandas import DataFrame
 data=pd.read_csv('/content/drive/MyDrive/ml/datasets/enjoysport.csv')
