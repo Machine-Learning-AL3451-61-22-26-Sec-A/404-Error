@@ -1,18 +1,39 @@
+# Install necessary packages
+!pip install streamlit scikit-learn
+
+# Import required libraries
+import streamlit as st
 from sklearn.datasets import load_iris
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split
 import numpy as np
-dataset=load_iris()
-#print(dataset)
-X_train,X_test,y_train,y_test=train_test_split(dataset["data"],dataset["target"],random_state=0)
-kn=KNeighborsClassifier(n_neighbors=1)
-kn.fit(X_train,y_train)
-KNeighborsClassifier(algorithm='auto', leaf_size=30, metric='minkowski',
-           metric_params=None, n_jobs=None, n_neighbors=1, p=2,
-           weights='uniform')
-for i in range(len(X_test)):
-    x=X_test[i]
-    x_new=np.array([x])
-    prediction=kn.predict(x_new)
-    print("TARGET=",y_test[i],dataset["target_names"][y_test[i]],"PREDICTED=",prediction,dataset["target_names"][prediction])
-print(kn.score(X_test,y_test))
+
+# Load the Iris dataset
+dataset = load_iris()
+
+# Streamlit app title
+st.title("Iris Flower Classification")
+
+# Train-test split
+X_train, X_test, y_train, y_test = train_test_split(dataset["data"], dataset["target"], random_state=0)
+
+# Model training
+kn = KNeighborsClassifier(n_neighbors=1)
+kn.fit(X_train, y_train)
+
+# Streamlit app
+st.sidebar.title("Iris Flower Classifier")
+
+# User input for new data point
+sepal_length = st.sidebar.slider("Sepal Length", float(dataset.data[:, 0].min()), float(dataset.data[:, 0].max()), float(dataset.data[:, 0].mean()))
+sepal_width = st.sidebar.slider("Sepal Width", float(dataset.data[:, 1].min()), float(dataset.data[:, 1].max()), float(dataset.data[:, 1].mean()))
+petal_length = st.sidebar.slider("Petal Length", float(dataset.data[:, 2].min()), float(dataset.data[:, 2].max()), float(dataset.data[:, 2].mean()))
+petal_width = st.sidebar.slider("Petal Width", float(dataset.data[:, 3].min()), float(dataset.data[:, 3].max()), float(dataset.data[:, 3].mean()))
+
+# Prediction for the new data point
+x_new = np.array([[sepal_length, sepal_width, petal_length, petal_width]])
+prediction = kn.predict(x_new)
+predicted_class = dataset.target_names[prediction][0]
+
+# Display prediction result
+st.write(f"Predicted Iris Class: {predicted_class}")
